@@ -1,0 +1,16 @@
+{
+  "name": "upvotr-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the UpVotr API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "license": "MIT"
+}

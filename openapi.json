@@ -1,0 +1,444 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "UpVotr API",
+    "version": "1.0.0",
+    "description": "Public REST API for UpVotr — Reddit Marketing Automation. Manage accounts, posts, media, captions, scheduling, discovery, and more.\n\nAuthentication: All endpoints require a Bearer token. Create API keys at /billing.\n\n```\nAuthorization: Bearer upv_...\n```",
+    "contact": { "name": "UpVotr", "url": "https://upvotr.vercel.app" }
+  },
+  "servers": [
+    { "url": "https://upvotr.vercel.app/api/v1", "description": "Production" },
+    { "url": "http://localhost:3000/api/v1", "description": "Local development" }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key starting with upv_"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "AUTH_FAILED" },
+              "message": { "type": "string", "example": "Missing or invalid Authorization header" }
+            }
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "total": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "username": { "type": "string" },
+          "karma_score": { "type": "integer" },
+          "post_karma": { "type": "integer" },
+          "comment_karma": { "type": "integer" },
+          "is_suspended": { "type": "boolean" },
+          "is_verified": { "type": "boolean" },
+          "account_age_days": { "type": "integer" },
+          "cake_day": { "type": "string" },
+          "fetched_at": { "type": "string", "format": "date-time" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "reddit_account_id": { "type": "string", "format": "uuid" },
+          "reddit_post_id": { "type": "string" },
+          "title": { "type": "string" },
+          "selftext": { "type": "string" },
+          "subreddit": { "type": "string" },
+          "score": { "type": "integer" },
+          "upvote_ratio": { "type": "number" },
+          "num_comments": { "type": "integer" },
+          "created_utc": { "type": "integer" },
+          "permalink": { "type": "string" },
+          "thumbnail": { "type": "string" },
+          "is_nsfw": { "type": "boolean" },
+          "is_video": { "type": "boolean" },
+          "is_gallery": { "type": "boolean" },
+          "removed_by_category": { "type": "string", "nullable": true },
+          "cached_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MediaItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "enum": ["image", "redgif", "video"] },
+          "title": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "storage_path": { "type": "string" },
+          "thumbnail_url": { "type": "string" },
+          "external_url": { "type": "string", "nullable": true },
+          "ai_description": { "type": "string", "nullable": true },
+          "folder_id": { "type": "string", "format": "uuid", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MediaFolder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "parent_id": { "type": "string", "format": "uuid", "nullable": true },
+          "name": { "type": "string" },
+          "color": { "type": "string" },
+          "sort_order": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Caption": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ScheduleEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "scheduled_date": { "type": "string", "format": "date" },
+          "scheduled_time": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string", "enum": ["draft", "scheduled", "posted", "failed", "cancelled"] },
+          "reddit_account_id": { "type": "string", "format": "uuid" },
+          "media_id": { "type": "string", "format": "uuid", "nullable": true },
+          "subreddit_id": { "type": "string", "format": "uuid", "nullable": true },
+          "selected_subreddits": { "type": "array", "items": { "type": "string" } },
+          "source": { "type": "string", "enum": ["manual", "ai"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Subreddit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "is_nsfw": { "type": "boolean" },
+          "subscriber_count": { "type": "integer" },
+          "description": { "type": "string", "nullable": true },
+          "rules": { "type": "object", "nullable": true },
+          "reddit_account_id": { "type": "string", "format": "uuid", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WatchlistItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "subreddit_name": { "type": "string" },
+          "reddit_account_id": { "type": "string", "format": "uuid", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "key_prefix": { "type": "string" },
+          "last_used_at": { "type": "string", "format": "date-time", "nullable": true },
+          "expires_at": { "type": "string", "format": "date-time", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "parameters": {
+      "page": { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+      "per_page": { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+    }
+  },
+  "paths": {
+    "/accounts": {
+      "get": {
+        "tags": ["Accounts"],
+        "summary": "List Reddit accounts",
+        "parameters": [
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/per_page" }
+        ],
+        "responses": {
+          "200": { "description": "Paginated list of accounts" }
+        }
+      },
+      "post": {
+        "tags": ["Accounts"],
+        "summary": "Add a Reddit account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username"],
+                "properties": { "username": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Account created" } }
+      }
+    },
+    "/accounts/{id}": {
+      "get": { "tags": ["Accounts"], "summary": "Get account by ID", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Account details" } } },
+      "patch": { "tags": ["Accounts"], "summary": "Update account", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "username": { "type": "string" } } } } } }, "responses": { "200": { "description": "Updated account" } } },
+      "delete": { "tags": ["Accounts"], "summary": "Delete account", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/accounts/{id}/subreddits": {
+      "get": { "tags": ["Accounts"], "summary": "List subreddits for account", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Subreddits discovered from posts" } } }
+    },
+    "/accounts/{id}/sync": {
+      "post": { "tags": ["Accounts"], "summary": "Sync account data from Reddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Sync result with posts_synced count" } } }
+    },
+    "/posts": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "List cached Reddit posts",
+        "parameters": [
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/per_page" },
+          { "name": "account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "subreddit", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["created_utc", "score", "num_comments", "cached_at"], "default": "created_utc" } },
+          { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } }
+        ],
+        "responses": { "200": { "description": "Paginated posts" } }
+      }
+    },
+    "/posts/{id}": {
+      "get": { "tags": ["Posts"], "summary": "Get post by ID", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Post details" } } }
+    },
+    "/posts/sync": {
+      "post": { "tags": ["Posts"], "summary": "Sync posts from Reddit", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "account_id": { "type": "string", "format": "uuid", "description": "Optional — syncs all accounts if omitted" } } } } } }, "responses": { "200": { "description": "Sync results per account" } } }
+    },
+    "/posts/log": {
+      "get": { "tags": ["Posts"], "summary": "Get post event log", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "subreddit_id", "in": "query", "schema": { "type": "string" } }, { "name": "account_id", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "Paginated log entries" } } }
+    },
+    "/media": {
+      "get": {
+        "tags": ["Media"],
+        "summary": "List media items",
+        "parameters": [
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/per_page" },
+          { "name": "folder_id", "in": "query", "schema": { "type": "string" }, "description": "Filter by folder ID or 'uncategorized'" },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["image", "redgif", "video"] } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Paginated media items" } }
+      }
+    },
+    "/media/upload": {
+      "post": {
+        "tags": ["Media"],
+        "summary": "Upload a media file",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "title": { "type": "string" },
+                  "folder_id": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Uploaded media item" } }
+      }
+    },
+    "/media/{id}": {
+      "get": { "tags": ["Media"], "summary": "Get media item", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Media item details" } } },
+      "patch": { "tags": ["Media"], "summary": "Update media item", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "folder_id": { "type": "string", "format": "uuid", "nullable": true } } } } } }, "responses": { "200": { "description": "Updated media item" } } },
+      "delete": { "tags": ["Media"], "summary": "Delete media item", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/media/{id}/describe": {
+      "post": { "tags": ["Media"], "summary": "Generate AI description for image", "description": "Uses Grok vision API. Counts against AI describe cap.", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "AI description" } } }
+    },
+    "/media/{id}/spoof": {
+      "post": { "tags": ["Media"], "summary": "Generate metadata-unique version", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Spoofed file as base64" } } }
+    },
+    "/media/{id}/download": {
+      "get": { "tags": ["Media"], "summary": "Get download URL", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Signed URL for download" } } }
+    },
+    "/media/move": {
+      "post": { "tags": ["Media"], "summary": "Move media to folder", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["media_ids"], "properties": { "media_ids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "maxItems": 100 }, "folder_id": { "type": "string", "format": "uuid", "nullable": true } } } } } }, "responses": { "200": { "description": "Move count" } } }
+    },
+    "/media/describe/bulk": {
+      "post": { "tags": ["Media"], "summary": "Bulk AI describe (Pro+ only)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "media_ids": { "type": "array", "items": { "type": "string" } }, "scope": { "type": "string", "enum": ["all", "uncategorized", "folder"] }, "folder_id": { "type": "string" }, "only_missing": { "type": "boolean", "default": true } } } } } }, "responses": { "200": { "description": "Bulk describe results" } } }
+    },
+    "/media/import-from-posts": {
+      "post": { "tags": ["Media"], "summary": "Import media from Reddit posts", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "filter_subreddit": { "type": "string" }, "limit": { "type": "integer", "default": 100, "maximum": 500 } } } } } }, "responses": { "200": { "description": "Import results" } } }
+    },
+    "/media/folders": {
+      "get": { "tags": ["Media Folders"], "summary": "List folders (tree)", "responses": { "200": { "description": "Folder tree with media counts" } } },
+      "post": { "tags": ["Media Folders"], "summary": "Create folder", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "parent_id": { "type": "string", "format": "uuid" }, "color": { "type": "string" } } } } } }, "responses": { "201": { "description": "Created folder" } } }
+    },
+    "/media/folders/{id}": {
+      "patch": { "tags": ["Media Folders"], "summary": "Update folder", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "color": { "type": "string" } } } } } }, "responses": { "200": { "description": "Updated folder" } } },
+      "delete": { "tags": ["Media Folders"], "summary": "Delete folder", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/captions": {
+      "get": { "tags": ["Captions"], "summary": "List saved captions", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "tag", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "Paginated captions" } } },
+      "post": { "tags": ["Captions"], "summary": "Save a caption", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } } } } } } }, "responses": { "201": { "description": "Created caption" } } }
+    },
+    "/captions/{id}": {
+      "get": { "tags": ["Captions"], "summary": "Get caption", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Caption" } } },
+      "patch": { "tags": ["Captions"], "summary": "Update caption", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "content": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } } } } } } }, "responses": { "200": { "description": "Updated" } } },
+      "delete": { "tags": ["Captions"], "summary": "Delete caption", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/captions/generate": {
+      "post": { "tags": ["Captions"], "summary": "Generate AI captions", "description": "Uses Grok AI to generate captions based on subreddit context, media, and posting history. Counts against caption AI cap.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["subreddit_name"], "properties": { "subreddit_name": { "type": "string" }, "reddit_account_username": { "type": "string" }, "media_id": { "type": "string", "format": "uuid" }, "media_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }, "count": { "type": "integer", "minimum": 1, "maximum": 10, "default": 5 }, "use_subreddit_posts": { "type": "boolean", "default": true }, "use_account_posts": { "type": "boolean", "default": true }, "use_subreddit_rules": { "type": "boolean", "default": true }, "use_media_context": { "type": "boolean", "default": true }, "allow_media_description_generation": { "type": "boolean", "default": true }, "use_nsfw_language": { "type": "boolean", "default": false } } } } } }, "responses": { "200": { "description": "Generated captions with context stats" } } }
+    },
+    "/captions/inspirations": {
+      "get": { "tags": ["Captions"], "summary": "List caption inspirations", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "subreddit", "in": "query", "schema": { "type": "string" } }, { "name": "favorite", "in": "query", "schema": { "type": "string", "enum": ["true", "false"] } }, { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["score", "times_used"] } } ], "responses": { "200": { "description": "Paginated inspirations" } } },
+      "patch": { "tags": ["Captions"], "summary": "Toggle inspiration favorite", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["id", "is_favorite"], "properties": { "id": { "type": "string", "format": "uuid" }, "is_favorite": { "type": "boolean" } } } } } }, "responses": { "200": { "description": "Updated inspiration" } } }
+    },
+    "/schedule": {
+      "get": { "tags": ["Schedule"], "summary": "List scheduled posts", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["draft", "scheduled", "posted", "failed", "cancelled"] } }, { "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }, { "name": "source", "in": "query", "schema": { "type": "string", "enum": ["manual", "ai"] } } ], "responses": { "200": { "description": "Paginated schedule entries" } } },
+      "post": { "tags": ["Schedule"], "summary": "Create schedule entry", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["scheduled_date", "title"], "properties": { "scheduled_date": { "type": "string", "format": "date" }, "scheduled_time": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string", "enum": ["draft", "scheduled"], "default": "draft" }, "reddit_account_id": { "type": "string", "format": "uuid" }, "media_id": { "type": "string", "format": "uuid" }, "subreddit_id": { "type": "string", "format": "uuid" }, "selected_subreddits": { "type": "array", "items": { "type": "string" } }, "source": { "type": "string", "default": "manual" } } } } } }, "responses": { "201": { "description": "Created entry" } } }
+    },
+    "/schedule/{id}": {
+      "get": { "tags": ["Schedule"], "summary": "Get schedule entry", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Schedule entry" } } },
+      "patch": { "tags": ["Schedule"], "summary": "Update schedule entry", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "scheduled_date": { "type": "string", "format": "date" }, "scheduled_time": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string" }, "reddit_account_id": { "type": "string" }, "media_id": { "type": "string" }, "selected_subreddits": { "type": "array", "items": { "type": "string" } } } } } } }, "responses": { "200": { "description": "Updated" } } },
+      "delete": { "tags": ["Schedule"], "summary": "Delete schedule entry", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/schedule/generate": {
+      "post": { "tags": ["Schedule"], "summary": "AI schedule generation", "description": "Generates a content schedule with AI captions, smart media matching, and cooldown-aware subreddit selection.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["reddit_account_id", "posts_per_day", "start_time", "end_time", "spacing_minutes"], "properties": { "reddit_account_id": { "type": "string", "format": "uuid" }, "posts_per_day": { "type": "integer", "minimum": 1, "maximum": 30 }, "start_time": { "type": "string", "description": "HH:MM format" }, "end_time": { "type": "string", "description": "HH:MM format" }, "spacing_minutes": { "type": "integer" }, "timezone": { "type": "string", "default": "UTC" }, "start_date": { "type": "string", "format": "date" }, "scope": { "type": "string", "enum": ["window", "day"], "default": "window" }, "target_date": { "type": "string", "format": "date" }, "apply_mode": { "type": "string", "enum": ["replace", "add"], "default": "replace" }, "use_nsfw_language": { "type": "boolean", "default": false } } } } } }, "responses": { "200": { "description": "Generation results" } } }
+    },
+    "/posting/availability": {
+      "get": { "tags": ["Posting"], "summary": "Posting availability matrix", "parameters": [{ "name": "account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Availability per subreddit with cooldown status" } } }
+    },
+    "/posting/settings": {
+      "get": { "tags": ["Posting"], "summary": "Get posting settings", "responses": { "200": { "description": "Cooldown and score tier settings" } } },
+      "put": { "tags": ["Posting"], "summary": "Update posting settings", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "subreddit_cooldown_hours": { "type": "integer", "minimum": 0, "maximum": 168 }, "content_cooldown_days": { "type": "integer", "minimum": 0, "maximum": 365 }, "score_tier_low": { "type": "integer" }, "score_tier_mid": { "type": "integer" }, "score_tier_high": { "type": "integer" } } } } } }, "responses": { "200": { "description": "Updated settings" } } }
+    },
+    "/posting/subreddit-history": {
+      "get": { "tags": ["Posting"], "summary": "Posting history per subreddit", "parameters": [ { "name": "account_id", "in": "query", "required": true, "schema": { "type": "string" } }, { "name": "subreddit", "in": "query", "required": true, "schema": { "type": "string" } } ], "responses": { "200": { "description": "Recent posts in subreddit" } } }
+    },
+    "/subreddits": {
+      "get": { "tags": ["Subreddits"], "summary": "List tracked subreddits", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "search", "in": "query", "schema": { "type": "string" } }, { "name": "reddit_account_id", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "Paginated subreddits" } } },
+      "post": { "tags": ["Subreddits"], "summary": "Add subreddit", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "reddit_account_id": { "type": "string" }, "is_nsfw": { "type": "boolean" }, "subscriber_count": { "type": "integer" }, "description": { "type": "string" } } } } } }, "responses": { "201": { "description": "Created" } } }
+    },
+    "/subreddits/{id}": {
+      "get": { "tags": ["Subreddits"], "summary": "Get subreddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Subreddit" } } },
+      "patch": { "tags": ["Subreddits"], "summary": "Update subreddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "notes": { "type": "string" }, "is_nsfw": { "type": "boolean" }, "description": { "type": "string" } } } } } }, "responses": { "200": { "description": "Updated" } } },
+      "delete": { "tags": ["Subreddits"], "summary": "Delete subreddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/subreddits/sync": {
+      "post": { "tags": ["Subreddits"], "summary": "Sync subreddits from Reddit", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["subreddit_names"], "properties": { "subreddit_names": { "type": "array", "items": { "type": "string" }, "maxItems": 25 } } } } } }, "responses": { "200": { "description": "Sync results" } } }
+    },
+    "/subreddits/lookup/{name}/info": {
+      "get": { "tags": ["Subreddits"], "summary": "Fetch subreddit info from Reddit", "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Live subreddit info with rules" } } }
+    },
+    "/subreddits/lookup/{name}/top": {
+      "get": { "tags": ["Subreddits"], "summary": "Fetch top posts from subreddit", "parameters": [ { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }, { "name": "time", "in": "query", "schema": { "type": "string", "enum": ["hour", "day", "week", "month", "year", "all"], "default": "month" } }, { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } } ], "responses": { "200": { "description": "Top posts" } } }
+    },
+    "/discovery/sessions": {
+      "post": { "tags": ["Discovery"], "summary": "Start discovery session", "description": "Start or resume a Tinder-style subreddit discovery session. Counts against discovery AI cap.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["reddit_account_id"], "properties": { "reddit_account_id": { "type": "string", "format": "uuid" }, "filters": { "type": "object" }, "resume_session_id": { "type": "string", "format": "uuid" }, "start_fresh": { "type": "boolean" } } } } } }, "responses": { "201": { "description": "Session created" } } }
+    },
+    "/discovery/sessions/{id}": {
+      "get": { "tags": ["Discovery"], "summary": "Get session status", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Session status with pool stats" } } }
+    },
+    "/discovery/sessions/{id}/cards": {
+      "get": { "tags": ["Discovery"], "summary": "Get discovery cards", "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }, { "name": "count", "in": "query", "schema": { "type": "integer", "default": 30 } } ], "responses": { "200": { "description": "Cards with session stats" } } }
+    },
+    "/discovery/sessions/{id}/swipe": {
+      "post": { "tags": ["Discovery"], "summary": "Swipe on a subreddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["discovered_subreddit_id", "action"], "properties": { "discovered_subreddit_id": { "type": "string", "format": "uuid" }, "action": { "type": "string", "enum": ["like", "skip"] }, "skip_reason": { "type": "string" } } } } } }, "responses": { "200": { "description": "Swipe result" } } }
+    },
+    "/discovery/sessions/{id}/fetch-more": {
+      "post": { "tags": ["Discovery"], "summary": "Load more cards", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Fetch status" } } }
+    },
+    "/watchlist": {
+      "get": { "tags": ["Watchlist"], "summary": "List watchlist", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "reddit_account_id", "in": "query", "schema": { "type": "string" } } ], "responses": { "200": { "description": "Paginated watchlist" } } },
+      "post": { "tags": ["Watchlist"], "summary": "Add to watchlist", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["subreddit_name"], "properties": { "subreddit_name": { "type": "string" }, "reddit_account_id": { "type": "string" }, "notes": { "type": "string" } } } } } }, "responses": { "201": { "description": "Added" } } }
+    },
+    "/watchlist/{id}": {
+      "get": { "tags": ["Watchlist"], "summary": "Get watchlist item", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Watchlist item" } } },
+      "delete": { "tags": ["Watchlist"], "summary": "Remove from watchlist", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/watchlist/{id}/add-to-tracking": {
+      "post": { "tags": ["Watchlist"], "summary": "Move to tracked subreddits", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Added to tracking" } } }
+    },
+    "/warmup/accounts": {
+      "get": { "tags": ["Warmup"], "summary": "List warmup reference accounts", "parameters": [ { "$ref": "#/components/parameters/page" }, { "$ref": "#/components/parameters/per_page" }, { "name": "search", "in": "query", "schema": { "type": "string" } }, { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["created", "karma", "scraped"] } }, { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"] } } ], "responses": { "200": { "description": "Paginated accounts" } } },
+      "post": { "tags": ["Warmup"], "summary": "Add warmup account", "description": "Validates account exists on Reddit.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["username"], "properties": { "username": { "type": "string" } } } } } }, "responses": { "201": { "description": "Account added" } } }
+    },
+    "/warmup/accounts/{id}": {
+      "get": { "tags": ["Warmup"], "summary": "Get warmup account", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Account details" } } },
+      "delete": { "tags": ["Warmup"], "summary": "Delete warmup account", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deleted" } } }
+    },
+    "/warmup/accounts/{id}/scrape": {
+      "post": { "tags": ["Warmup"], "summary": "Scrape Reddit activity", "description": "Fetches posts + comments from Reddit. Starter+ only.", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Scrape results" } } }
+    },
+    "/warmup/accounts/{id}/sop": {
+      "get": { "tags": ["Warmup"], "summary": "Get SOP", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "SOP content" } } },
+      "post": { "tags": ["Warmup"], "summary": "Generate SOP with AI", "description": "Requires scraped data. Counts against warmup AI cap.", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Generated SOP" } } }
+    },
+    "/warmup/accounts/{id}/sop/export": {
+      "get": { "tags": ["Warmup"], "summary": "Export SOP as markdown", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Markdown file download" } } }
+    },
+    "/warmup/accounts/{id}/timeline": {
+      "get": { "tags": ["Warmup"], "summary": "Get warmup timeline", "description": "Requires scraped data.", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Timeline with milestones" } } }
+    },
+    "/dashboard": {
+      "get": { "tags": ["Dashboard"], "summary": "Dashboard overview", "parameters": [{ "name": "account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Accounts, today stats, counts" } } }
+    },
+    "/dashboard/stats": {
+      "get": { "tags": ["Dashboard"], "summary": "Posting stats and analytics", "parameters": [ { "name": "days", "in": "query", "schema": { "type": "integer", "default": 30, "minimum": 1, "maximum": 90 } }, { "name": "account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } } ], "responses": { "200": { "description": "Activity, top subreddits, score tiers" } } }
+    },
+    "/user/plan": {
+      "get": { "tags": ["User"], "summary": "Get plan, limits, and usage", "responses": { "200": { "description": "Plan info with usage stats" } } }
+    },
+    "/user/keys": {
+      "get": { "tags": ["User"], "summary": "List API keys", "responses": { "200": { "description": "API keys (no secrets)" } } },
+      "post": { "tags": ["User"], "summary": "Create API key", "description": "Returns the full key ONCE. Store it securely.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "expires_in_days": { "type": "integer" } } } } } }, "responses": { "201": { "description": "API key (includes secret)" } } }
+    },
+    "/user/keys/{id}": {
+      "delete": { "tags": ["User"], "summary": "Revoke API key", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Revoked" } } }
+    }
+  },
+  "tags": [
+    { "name": "Accounts", "description": "Reddit account management" },
+    { "name": "Posts", "description": "Cached Reddit posts" },
+    { "name": "Media", "description": "Image/video management and AI descriptions" },
+    { "name": "Media Folders", "description": "Organize media into folders" },
+    { "name": "Captions", "description": "AI caption generation and saved captions" },
+    { "name": "Schedule", "description": "Content scheduling and AI generation" },
+    { "name": "Posting", "description": "Posting availability and settings" },
+    { "name": "Subreddits", "description": "Subreddit tracking and Reddit data" },
+    { "name": "Discovery", "description": "Tinder-style subreddit discovery" },
+    { "name": "Watchlist", "description": "Subreddit watchlist from discovery" },
+    { "name": "Warmup", "description": "Account warmup analysis and SOPs" },
+    { "name": "Dashboard", "description": "Analytics and overview" },
+    { "name": "User", "description": "Plan, usage, and API keys" }
+  ]
+}
