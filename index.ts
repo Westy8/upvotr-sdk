@@ -53,6 +53,27 @@ export interface Account {
   created_at: string
 }
 
+export interface AccountGroup {
+  id: string
+  name: string
+  color: string | null
+  media_folder_id: string | null
+  member_count: number
+  member_ids: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AccountGroupMemberPreview {
+  id: string
+  username: string
+  is_suspended: boolean
+}
+
+export interface AccountGroupWithMembers extends Omit<AccountGroup, 'member_ids'> {
+  members: AccountGroupMemberPreview[]
+}
+
 export interface Post {
   id: string
   reddit_account_id: string
@@ -166,6 +187,7 @@ export class UpVotr {
   private apiKey: string
 
   readonly accounts: AccountsResource
+  readonly accountGroups: AccountGroupsResource
   readonly posts: PostsResource
   readonly media: MediaResource
   readonly folders: FoldersResource
@@ -184,6 +206,7 @@ export class UpVotr {
     this.baseUrl = (config.baseUrl || 'https://upvotr.vercel.app/api/v1').replace(/\/$/, '')
 
     this.accounts = new AccountsResource(this)
+    this.accountGroups = new AccountGroupsResource(this)
     this.posts = new PostsResource(this)
     this.media = new MediaResource(this)
     this.folders = new FoldersResource(this)
@@ -269,8 +292,8 @@ class AccountsResource extends Resource {
   list(params?: PaginationParams) {
     return this.get<Account[]>('/accounts', params as Record<string, string | number | boolean | undefined>)
   }
-  create(username: string) {
-    return this.post<Account>('/accounts', { username })
+  create(username: string, options?: { group_id?: string }) {
+    return this.post<Account>('/accounts', { username, ...(options || {}) })
   }
   retrieve(id: string) {
     return this.get<Account>(`/accounts/${id}`)
@@ -286,6 +309,36 @@ class AccountsResource extends Resource {
   }
   sync(id: string) {
     return this.post<{ posts_synced: number }>(`/accounts/${id}/sync`)
+  }
+}
+
+// ─── Account Groups ──────────────────────────────────────────────────────────
+
+class AccountGroupsResource extends Resource {
+  list(params?: PaginationParams) {
+    return this.get<AccountGroup[]>('/account-groups', params as Record<string, string | number | boolean | undefined>)
+  }
+  create(data: {
+    name: string
+    account_ids: string[]
+    color?: string | null
+    media_folder_id?: string | null
+  }) {
+    return this.post<AccountGroup>('/account-groups', data)
+  }
+  retrieve(id: string) {
+    return this.get<AccountGroupWithMembers>(`/account-groups/${id}`)
+  }
+  update(id: string, data: {
+    name?: string
+    color?: string | null
+    account_ids?: string[]
+    media_folder_id?: string | null
+  }) {
+    return this.patch<AccountGroupWithMembers>(`/account-groups/${id}`, data)
+  }
+  delete(id: string) {
+    return this.del<{ id: string; deleted: true }>(`/account-groups/${id}`)
   }
 }
 
