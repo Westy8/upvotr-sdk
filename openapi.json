@@ -58,6 +58,43 @@
           "created_at": { "type": "string", "format": "date-time" }
         }
       },
+      "AccountGroup": {
+        "type": "object",
+        "required": ["id", "name", "color", "media_folder_id", "member_count", "member_ids", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "nullable": true },
+          "media_folder_id": { "type": "string", "format": "uuid", "nullable": true },
+          "member_count": { "type": "integer" },
+          "member_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AccountGroupMemberPreview": {
+        "type": "object",
+        "required": ["id", "username", "is_suspended"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "username": { "type": "string" },
+          "is_suspended": { "type": "boolean" }
+        }
+      },
+      "AccountGroupWithMembers": {
+        "type": "object",
+        "required": ["id", "name", "color", "media_folder_id", "member_count", "members", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "nullable": true },
+          "media_folder_id": { "type": "string", "format": "uuid", "nullable": true },
+          "member_count": { "type": "integer" },
+          "members": { "type": "array", "items": { "$ref": "#/components/schemas/AccountGroupMemberPreview" } },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
       "Post": {
         "type": "object",
         "properties": {
@@ -195,12 +232,18 @@
               "schema": {
                 "type": "object",
                 "required": ["username"],
-                "properties": { "username": { "type": "string" } }
+                "properties": {
+                  "username": { "type": "string" },
+                  "group_id": { "type": "string", "format": "uuid", "description": "Optional. If provided, the new account is added as a member of this group." }
+                }
               }
             }
           }
         },
-        "responses": { "201": { "description": "Account created" } }
+        "responses": {
+          "201": { "description": "Account created" },
+          "404": { "description": "GROUP_NOT_FOUND — group_id does not exist" }
+        }
       }
     },
     "/accounts/{id}": {
@@ -213,6 +256,103 @@
     },
     "/accounts/{id}/sync": {
       "post": { "tags": ["Accounts"], "summary": "Sync account data from Reddit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Sync result with posts_synced count" } } }
+    },
+    "/account-groups": {
+      "get": {
+        "summary": "List account groups",
+        "tags": ["Account Groups"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of account groups",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "required": ["success", "data"],
+              "properties": {
+                "success": { "type": "boolean" },
+                "data": { "type": "array", "items": { "$ref": "#/components/schemas/AccountGroup" } },
+                "meta": {
+                  "type": "object",
+                  "properties": {
+                    "page": { "type": "integer" },
+                    "per_page": { "type": "integer" },
+                    "total": { "type": "integer" },
+                    "total_pages": { "type": "integer" }
+                  }
+                }
+              }
+            } } }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an account group",
+        "tags": ["Account Groups"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "required": ["name", "account_ids"],
+            "properties": {
+              "name": { "type": "string", "maxLength": 80 },
+              "color": { "type": "string", "nullable": true },
+              "account_ids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "minItems": 2 },
+              "media_folder_id": { "type": "string", "format": "uuid", "nullable": true }
+            }
+          } } }
+        },
+        "responses": {
+          "201": { "description": "Group created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccountGroup" } } } },
+          "400": { "description": "Validation failed (MISSING_FIELD, INVALID_FIELD, INVALID_FOLDER)" },
+          "409": { "description": "DUPLICATE — a group with this name already exists" }
+        }
+      }
+    },
+    "/account-groups/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ],
+      "get": {
+        "summary": "Retrieve an account group with member previews",
+        "tags": ["Account Groups"],
+        "responses": {
+          "200": { "description": "Account group with members", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccountGroupWithMembers" } } } },
+          "404": { "description": "NOT_FOUND" }
+        }
+      },
+      "patch": {
+        "summary": "Update an account group",
+        "tags": ["Account Groups"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "maxLength": 80 },
+              "color": { "type": "string", "nullable": true },
+              "account_ids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "minItems": 2 },
+              "media_folder_id": { "type": "string", "format": "uuid", "nullable": true }
+            }
+          } } }
+        },
+        "responses": {
+          "200": { "description": "Updated account group with members", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccountGroupWithMembers" } } } },
+          "400": { "description": "Validation failed" },
+          "404": { "description": "NOT_FOUND" },
+          "409": { "description": "DUPLICATE name" }
+        }
+      },
+      "delete": {
+        "summary": "Delete an account group",
+        "tags": ["Account Groups"],
+        "responses": {
+          "200": { "description": "Group deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "deleted": { "type": "boolean", "const": true } } } } } },
+          "404": { "description": "NOT_FOUND" }
+        }
+      }
     },
     "/posts": {
       "get": {
