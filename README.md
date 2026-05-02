@@ -49,6 +49,11 @@ await client.schedule.create({
   reddit_account_id: accounts.data[0].id,
   media_id: media.data.id,
 })
+
+// Drop a new reddit account directly into an existing account group
+const groups = await client.accountGroups.list()
+const targetGroup = groups.data[0]
+await client.accounts.create('newuser123', { group_id: targetGroup.id })
 ```
 
 ## Authentication
@@ -67,6 +72,7 @@ export UPVOTR_API_KEY=upv_your_key_here
 | Resource | Methods | Description |
 |---|---|---|
 | `client.accounts` | `list`, `create`, `retrieve`, `update`, `delete`, `subreddits`, `sync` | Reddit account management |
+| `client.accountGroups` | `list`, `create`, `retrieve`, `update`, `delete` | Account-group management (multi-account collections) |
 | `client.posts` | `list`, `retrieve`, `sync`, `log` | Cached Reddit posts |
 | `client.media` | `list`, `uploadFile`, `retrieve`, `update`, `delete`, `describe`, `spoof`, `download`, `move`, `describeBulk`, `importFromPosts` | Media management & AI |
 | `client.folders` | `list`, `create`, `update`, `delete` | Media folder organization |
