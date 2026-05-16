@@ -128,6 +128,19 @@ export interface ScheduleEntry {
   scheduled_date: string
   scheduled_time: string
   title: string
+  /**
+   * Reddit post-flair text the row will be tagged with. AI generation
+   * stamps the best-fit flair from the target subreddit's top posts;
+   * users can override via the UpVotr dashboard. Null when the subreddit
+   * has no usable flairs or when no flair was selected.
+   */
+  flair_text: string | null
+  /**
+   * Reddit's UUID for the chosen flair template. Provide this to Reddit's
+   * submit endpoint when posting; `flair_text` is for human display and
+   * fallback. Null when not picked or unknown.
+   */
+  flair_template_id: string | null
   status: 'draft' | 'scheduled' | 'posted' | 'failed' | 'cancelled'
   reddit_account_id: string
   media_id: string | null
@@ -485,6 +498,10 @@ class ScheduleResource extends Resource {
     subreddit_id?: string
     selected_subreddits?: string[]
     source?: string
+    /** Reddit post-flair text. Pass null to clear. */
+    flair_text?: string | null
+    /** Reddit flair template UUID, if known. */
+    flair_template_id?: string | null
   }) {
     return this.post<ScheduleEntry>('/schedule', data)
   }

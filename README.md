@@ -41,13 +41,17 @@ const captions = await client.captions.generate({
   count: 5,
 })
 
-// Create a scheduled post
+// Create a scheduled post (optionally pin a flair)
 await client.schedule.create({
   scheduled_date: '2026-03-15',
   scheduled_time: '14:00',
   title: 'My post title',
   reddit_account_id: accounts.data[0].id,
   media_id: media.data.id,
+  // Both are optional. AI-generated rows have these populated automatically;
+  // when posting via Reddit's submit endpoint, prefer flair_template_id.
+  flair_text: 'Discussion',
+  flair_template_id: 'abc-1234-...',
 })
 
 // Drop a new reddit account directly into an existing account group
